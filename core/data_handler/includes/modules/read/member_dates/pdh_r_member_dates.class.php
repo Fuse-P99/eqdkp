@@ -108,6 +108,7 @@ if ( !class_exists( "pdh_r_member_dates" ) ) {
 			$raid_ids = $this->pdh->get('raid', 'id_list');
 			$main_ids = $this->pdh->aget('member', 'mainid', 0, array($this->pdh->get('member', 'id_list', array(false, false, false, false))));
 			$member_list = $this->pdh->get('member', 'id_list', array(false, false, false));
+			$member_list_lookup = array_flip($member_list);
 			foreach($raid_ids as $raid_id){
 				$date = $this->pdh->get('raid', 'date', array($raid_id));
 				$attendees = $this->pdh->get('raid', 'raid_attendees', array($raid_id));
@@ -115,7 +116,7 @@ if ( !class_exists( "pdh_r_member_dates" ) ) {
 				$mdkpids = $this->pdh->get('multidkp', 'mdkpids4eventid', array($event_id));
 				if(is_array($attendees)) {
 					foreach($attendees as $attendee_id){
-						if(!in_array($attendee_id, $member_list)) continue;
+						if(!isset($member_list_lookup[$attendee_id])) continue;
 
 						if(!isset($this->fl_raid_dates['single'][$attendee_id]['total']['first_date']) || $date < $this->fl_raid_dates['single'][$attendee_id]['total']['first_date']) {
 							$this->fl_raid_dates['single'][$attendee_id]['total']['first_date'] = $date;

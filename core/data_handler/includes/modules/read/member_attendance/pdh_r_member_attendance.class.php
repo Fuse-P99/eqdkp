@@ -180,7 +180,7 @@ if ( !class_exists( "pdh_r_member_attendance" ) ) {
 					
 					if(!isset($arrDoneRaids[$raid_id])){
 						foreach($first_raids as $first_raid => $num){
-							if($date >= $first_raid) {
+							if($date >= $first_raid && isset($first_raids[$first_raid][$mdkp_id])) {
 								$first_raids[$first_raid][$mdkp_id] += $value;
 							}
 						}
