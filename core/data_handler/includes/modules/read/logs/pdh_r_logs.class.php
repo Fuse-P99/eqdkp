@@ -70,6 +70,8 @@ if ( !class_exists( "pdh_r_logs" ) ) {
 				while($row = $objQuery->fetchAssoc()){
 					$arrPlugins[] = $row['log_plugin'];
 				}
+				// Free loop variable to reduce retained memory in long-lived handlers
+				unset($row);
 			}
 			return $arrPlugins;
 		}
@@ -81,6 +83,7 @@ if ( !class_exists( "pdh_r_logs" ) ) {
 				while($row = $objQuery->fetchAssoc()){
 					$arrUsers[] = $row['user_id'];
 				}
+				unset($row);
 			}
 
 			return $arrUsers;
@@ -93,6 +96,7 @@ if ( !class_exists( "pdh_r_logs" ) ) {
 				while($row = $objQuery->fetchAssoc()){
 					$arrTags[] = $row['log_tag'];
 				}
+				unset($row);
 			}
 
 			return $arrTags;
@@ -118,6 +122,7 @@ if ( !class_exists( "pdh_r_logs" ) ) {
 				while($row = $objQuery->fetchAssoc()){
 					$arrIDs[] = $row['log_id'];
 				}
+				unset($row);
 			}
 
 			return $arrIDs;
@@ -140,6 +145,7 @@ if ( !class_exists( "pdh_r_logs" ) ) {
 				while ( $row = $objQuery->fetchAssoc() ) {
 					$id_list[] = $row['log_id'];
 				}
+				unset($row);
 			}
 			return $id_list;
 		}

@@ -23,6 +23,8 @@ define('EQDKP_INC', true);
 $eqdkp_root_path = './';
 define('NO_MMODE_REDIRECT', true);
 define('SESSION_TYPE', 'exchange');
+// TODO: Limit this and trim down the sync
+ini_set('memory_limit','1024M');
 
 include_once($eqdkp_root_path . 'common.php');
 

@@ -66,9 +66,32 @@ if(!class_exists('pdh_r_raid')){
 
 
 		public function init(){
+			// Lightweight profiling for heavy init
+			if (!isset($this->__prof_raid)) {
+				$profTools = dirname(__DIR__, 6) . DIRECTORY_SEPARATOR . 'CoPilot' . DIRECTORY_SEPARATOR . 'PROFILING_TOOLS.php';
+				if (file_exists($profTools)) {
+					include_once $profTools;
+				}
+				if (class_exists('PerformanceProfiler')) {
+					$this->__prof_raid = new PerformanceProfiler();
+					$this->__prof_raid->start();
+				}
+			}
 			$this->objPagination = register("cachePagination", array("raids", "raid_id", "__raids", array('additionalData' => "SELECT member_id, raid_id as object_key FROM __raid_attendees WHERE raid_id >= ? AND raid_id < ?"), 100));
 			$this->objPagination->initIndex();
 			$this->index = $this->objPagination->getIndex();
+			// Free memory if index is large
+			if(is_array($this->index) && count($this->index) > 10000) {
+				gc_collect_cycles();
+			}
+			// End profiling and log
+			if (isset($this->__prof_raid) && method_exists($this->__prof_raid, 'end')) {
+				$metrics = $this->__prof_raid->end();
+				if (function_exists('error_log')) {
+					error_log('Profiler pdh_r_raid:init time=' . $metrics['time'] . ' memory=' . $metrics['memory']);
+				}
+				unset($this->__prof_raid);
+			}
 		}
 
 
@@ -176,16 +199,18 @@ if(!class_exists('pdh_r_raid')){
 
 
 		public function get_raid_attendees($id, $skip_special = true){
-			$arrMembers = array();
-			$arrAttendees = $this->objPagination->get($id, 'additional');
-			if ($arrAttendees && is_array($arrAttendees)){
-				foreach($arrAttendees as $val){
-					if ($skip_special && is_array($this->config->get('special_members')) && in_array($val['member_id'], $this->config->get('special_members'))) continue;
+$arrMembers = array();
+$arrAttendees = $this->objPagination->get($id, 'additional');
+// Cache special members to avoid repeated config lookups in hot paths
+$special_members = ($skip_special) ? $this->config->get('special_members') : array();
+if ($arrAttendees && is_array($arrAttendees)){
+foreach($arrAttendees as $val){
+if ($skip_special && is_array($special_members) && in_array($val['member_id'], $special_members)) continue;
 
-					$arrMembers[] = $val['member_id'];
-				}
-			}
-			return $arrMembers;
+$arrMembers[] = $val['member_id'];
+}
+}
+return $arrMembers;
 		}
 
 
@@ -353,3 +378,4 @@ if(!class_exists('pdh_r_raid')){
 		}
 	}
 }
+

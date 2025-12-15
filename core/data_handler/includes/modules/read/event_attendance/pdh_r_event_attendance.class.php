@@ -98,6 +98,8 @@ if ( !class_exists( "pdh_r_event_attendance" ) ) {
 				}
 
 				$this->pdc->put('pdh_event_att_count', $this->counts);
+				// Free memory after caching
+				unset($row);
 			}
 
 			//get raids

@@ -1328,8 +1328,6 @@ class game extends gen_class {
 				'game_language'		=> $strGamelang,
 				'game_version'		=> $this->gameinfo()->version
 		);
-		
-		$itt_config = array();
 
 		//If write any data
 		if($intOverwriteData !== 0){

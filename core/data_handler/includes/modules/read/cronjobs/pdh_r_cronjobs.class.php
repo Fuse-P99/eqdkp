@@ -92,6 +92,7 @@ if ( !class_exists( "pdh_r_cronjobs" ) ) {
 
 					);
 				}
+				unset($drow);
 
 				$this->pdc->put('pdh_cronjobs_table', $cronjobs, null);
 				$this->cronjobs = $cronjobs;

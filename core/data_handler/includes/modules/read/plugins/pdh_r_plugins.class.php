@@ -53,8 +53,12 @@ if ( !class_exists( "pdh_r_plugins" ) ) {
 						'status'	=> $drow['status']
 					);
 				}
+				unset($drow);
 
 				$this->pdc->put('pdh_plugins_table', $this->plugins, null);
+				if(is_array($this->plugins) && count($this->plugins) > 5000){
+					gc_collect_cycles();
+				}
 			}
 		}
 

@@ -306,7 +306,8 @@ if ( !defined('EQDKP_INC') ){
 			}
 			if(is_array($trace)){
 				foreach($trace as $ddata) {
-					$text .=	'File: '.$ddata['file'].', Line: '.$ddata['line'].', Function: '.$ddata['function'];
+					//$text .=	'File: '.$ddata['file'].', Line: '.$ddata['line'].', Function: '.$ddata['function'];
+					$text .=        'File: '.$ddata['file']?:'Unknown'.', Line: '.$ddata['line']?:'Unknown'.', Function: '.$ddata['function'];
 					if(isset($ddata['object'])) $text .= ', Object: '.get_class($ddata['object']);
 					$text .= "\n";
 				}

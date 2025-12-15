@@ -55,6 +55,7 @@ if(!class_exists('pdh_r_class_colors')){
 				while($row = $objQuery->fetchAssoc()){
 					$this->class_colors[$row['template']][$row['class_id']]	= $row['color'];
 				}
+				unset($row);
 				$this->pdc->put('pdh_classcolors_table', $this->class_colors, null);
 			}
 

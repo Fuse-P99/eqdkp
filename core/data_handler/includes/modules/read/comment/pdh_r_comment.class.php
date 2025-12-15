@@ -61,8 +61,14 @@ if(!class_exists('pdh_r_comment')){
 				while($row = $objQuery->fetchAssoc()){
 					$this->comments[$row['id']] = $row;
 				}
+				// Free loop variable to reduce retained memory
+				unset($row);
 
 				$this->pdc->put('pdh_comments_table', $this->comments, null);
+				// GC for very large comment tables
+				if(is_array($this->comments) && count($this->comments) > 10000){
+					gc_collect_cycles();
+				}
 			}
 		}
 

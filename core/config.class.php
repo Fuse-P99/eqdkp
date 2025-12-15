@@ -50,12 +50,16 @@ class config extends gen_class {
 	 * @param string $plugin
 	 * @return mixed
 	 */
-	public function get($name, $plugin='') {
-		if(!$this->blnRealConfigLoaded) $this->get_dbconfig();
-
-		if($plugin) return (isset($this->config[$plugin][$name])) ? $this->config[$plugin][$name] : false;
-		return (isset($this->config[$name])) ? $this->config[$name] : false;
-	}
+	   public function get($name, $plugin='') {
+		   // Performance: Load config once per request and cache in memory
+		   static $configCache = null;
+		   if($configCache === null || !$this->blnRealConfigLoaded) {
+			   $this->get_dbconfig();
+			   $configCache = $this->config;
+		   }
+		   if($plugin) return (isset($configCache[$plugin][$name])) ? $configCache[$plugin][$name] : false;
+		   return (isset($configCache[$name])) ? $configCache[$name] : false;
+	   }
 
 	/**
 	 * Return Config var from Cache

@@ -132,8 +132,12 @@ if ( !class_exists( "pdh_r_styles" ) ) {
 						'editor_theme'				=> $drow['editor_theme'],
 					);
 				}
+				unset($drow);
 
 				$this->pdc->put('pdh_styles_table', $this->styles, null);
+				if(is_array($this->styles) && count($this->styles) > 2000){
+					gc_collect_cycles();
+				}
 			}
 		}
 

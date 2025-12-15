@@ -90,6 +90,8 @@ if ( !class_exists( "pdh_r_member_dates" ) ) {
 			}
 
 			$this->_init_raid_dates();
+			// Free memory after initialization
+			unset($this->fl_raid_dates['single']);
 		}
 
 		public function init_raid_multi(){
@@ -99,68 +101,91 @@ if ( !class_exists( "pdh_r_member_dates" ) ) {
 			if($this->fl_raid_dates['multi'] != null){
 				return true;
 			}
+			// Free memory after initialization
+			unset($this->fl_raid_dates['multi']);
 
 			$this->_init_raid_dates();
 		}
 
 		public function _init_raid_dates(){
-			$this->fl_raid_dates = array();
-			$raid_ids = $this->pdh->get('raid', 'id_list');
-			$main_ids = $this->pdh->aget('member', 'mainid', 0, array($this->pdh->get('member', 'id_list', array(false, false, false, false))));
-			$member_list = $this->pdh->get('member', 'id_list', array(false, false, false));
-			foreach($raid_ids as $raid_id){
-				$date = $this->pdh->get('raid', 'date', array($raid_id));
-				$attendees = $this->pdh->get('raid', 'raid_attendees', array($raid_id));
-				$event_id = $this->pdh->get('raid', 'event', array($raid_id));
-				$mdkpids = $this->pdh->get('multidkp', 'mdkpids4eventid', array($event_id));
-				if(is_array($attendees)) {
-					foreach($attendees as $attendee_id){
-						if(!in_array($attendee_id, $member_list)) continue;
+$this->fl_raid_dates = array();
+// Prepare lookups and mappings
+$main_ids = $this->pdh->aget('member', 'mainid', 0, array($this->pdh->get('member', 'id_list', array(false, false, false, false))));
+$member_list = $this->pdh->get('member', 'id_list', array(false, false, false));
+$member_list_lookup = array_flip($member_list);
 
-						if(!isset($this->fl_raid_dates['single'][$attendee_id]['total']['first_date']) || $date < $this->fl_raid_dates['single'][$attendee_id]['total']['first_date']) {
-							$this->fl_raid_dates['single'][$attendee_id]['total']['first_date'] = $date;
-						}
-						if(!isset($this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['total']['first_date']) || $date < $this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['total']['first_date']) {
-							$this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['total']['first_date'] = $date;
-						}
-						if(!isset($this->fl_raid_dates['single'][$attendee_id]['total']['last_date']) || $date > $this->fl_raid_dates['single'][$attendee_id]['total']['last_date']) {
-							$this->fl_raid_dates['single'][$attendee_id]['total']['last_date'] = $date;
-						}
-						if(!isset($this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['total']['last_date']) || $date > $this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['total']['last_date']) {
-							$this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['total']['last_date'] = $date;
-						}
-						if(!isset($this->fl_raid_dates['single'][$attendee_id]['event'][$event_id]['first_date']) || $date < $this->fl_raid_dates['single'][$attendee_id]['event'][$event_id]['first_date']) {
-							$this->fl_raid_dates['single'][$attendee_id]['event'][$event_id]['first_date'] = $date;
-						}
-						if(!isset($this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['event'][$event_id]['first_date']) || $date < $this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['event'][$event_id]['first_date']) {
-							$this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['event'][$event_id]['first_date'] = $date;
-						}
-						if(!isset($this->fl_raid_dates['single'][$attendee_id]['event'][$event_id]['last_date']) || $date > $this->fl_raid_dates['single'][$attendee_id]['event'][$event_id]['last_date']) {
-							$this->fl_raid_dates['single'][$attendee_id]['event'][$event_id]['last_date'] = $date;
-						}
-						if(!isset($this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['event'][$event_id]['last_date']) || $date > $this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['event'][$event_id]['last_date']) {
-							$this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['event'][$event_id]['last_date'] = $date;
-						}
-						foreach($mdkpids as $mdkp_id){
-							if(!isset($this->fl_raid_dates['single'][$attendee_id]['mdkp'][$mdkp_id]['first_date']) || $date < $this->fl_raid_dates['single'][$attendee_id]['mdkp'][$mdkp_id]['first_date']) {
-								$this->fl_raid_dates['single'][$attendee_id]['mdkp'][$mdkp_id]['first_date'] = $date;
-							}
-							if(!isset($this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['mdkp'][$mdkp_id]['first_date']) || $date < $this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['mdkp'][$mdkp_id]['first_date']) {
-								$this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['mdkp'][$mdkp_id]['first_date'] = $date;
-							}
-							if(!isset($this->fl_raid_dates['single'][$attendee_id]['mdkp'][$mdkp_id]['last_date']) || $date > $this->fl_raid_dates['single'][$attendee_id]['mdkp'][$mdkp_id]['last_date']) {
-								$this->fl_raid_dates['single'][$attendee_id]['mdkp'][$mdkp_id]['last_date'] = $date;
-							}
-							if(!isset($this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['mdkp'][$mdkp_id]['last_date']) || $date > $this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['mdkp'][$mdkp_id]['last_date']) {
-								$this->fl_raid_dates['multi'][$main_ids[$attendee_id]]['mdkp'][$mdkp_id]['last_date'] = $date;
-							}
-						}
-					}
-				}
-			}
-			$this->pdc->put('pdh_fl_raid_dates_single', $this->fl_raid_dates['single']);
-			$this->pdc->put('pdh_fl_raid_dates_multi', $this->fl_raid_dates['multi']);
-		}
+// Build event -> mdkp map in one pass from multidkp2event table
+$event_mdkp = array();
+$objME = $this->db->query("SELECT multidkp2event_multi_id, multidkp2event_event_id FROM __multidkp2event;");
+if($objME){
+while($row = $objME->fetchAssoc()){
+$event_mdkp[(int)$row['multidkp2event_event_id']][] = (int)$row['multidkp2event_multi_id'];
+}
+}
+
+// Stream raid attendees in one query to avoid per-raid PDH calls
+$sql = "SELECT r.raid_id, r.raid_date, r.event_id, ra.member_id FROM __raids r JOIN __raid_attendees ra ON ra.raid_id = r.raid_id ORDER BY r.raid_date ASC";
+$objQuery = $this->db->query($sql);
+if($objQuery){
+while($row = $objQuery->fetchAssoc()){
+$date = (int)$row['raid_date'];
+$event_id = (int)$row['event_id'];
+$attendee_id = (int)$row['member_id'];
+
+if(!isset($member_list_lookup[$attendee_id])) continue;
+
+// single
+if(!isset($this->fl_raid_dates['single'][$attendee_id]['total']['first_date']) || $date < $this->fl_raid_dates['single'][$attendee_id]['total']['first_date']) {
+$this->fl_raid_dates['single'][$attendee_id]['total']['first_date'] = $date;
+}
+if(!isset($this->fl_raid_dates['single'][$attendee_id]['total']['last_date']) || $date > $this->fl_raid_dates['single'][$attendee_id]['total']['last_date']) {
+$this->fl_raid_dates['single'][$attendee_id]['total']['last_date'] = $date;
+}
+if(!isset($this->fl_raid_dates['single'][$attendee_id]['event'][$event_id]['first_date']) || $date < $this->fl_raid_dates['single'][$attendee_id]['event'][$event_id]['first_date']){
+$this->fl_raid_dates['single'][$attendee_id]['event'][$event_id]['first_date'] = $date;
+}
+if(!isset($this->fl_raid_dates['single'][$attendee_id]['event'][$event_id]['last_date']) || $date > $this->fl_raid_dates['single'][$attendee_id]['event'][$event_id]['last_date']){
+$this->fl_raid_dates['single'][$attendee_id]['event'][$event_id]['last_date'] = $date;
+}
+
+// multi (by main id)
+$main_id = $main_ids[$attendee_id];
+if(!isset($this->fl_raid_dates['multi'][$main_id]['total']['first_date']) || $date < $this->fl_raid_dates['multi'][$main_id]['total']['first_date']) {
+$this->fl_raid_dates['multi'][$main_id]['total']['first_date'] = $date;
+}
+if(!isset($this->fl_raid_dates['multi'][$main_id]['total']['last_date']) || $date > $this->fl_raid_dates['multi'][$main_id]['total']['last_date']) {
+$this->fl_raid_dates['multi'][$main_id]['total']['last_date'] = $date;
+}
+if(!isset($this->fl_raid_dates['multi'][$main_id]['event'][$event_id]['first_date']) || $date < $this->fl_raid_dates['multi'][$main_id]['event'][$event_id]['first_date']){
+$this->fl_raid_dates['multi'][$main_id]['event'][$event_id]['first_date'] = $date;
+}
+if(!isset($this->fl_raid_dates['multi'][$main_id]['event'][$event_id]['last_date']) || $date > $this->fl_raid_dates['multi'][$main_id]['event'][$event_id]['last_date']){
+$this->fl_raid_dates['multi'][$main_id]['event'][$event_id]['last_date'] = $date;
+}
+
+// mdkp per event
+if(isset($event_mdkp[$event_id]) && is_array($event_mdkp[$event_id])){
+foreach($event_mdkp[$event_id] as $mdkp_id){
+if(!isset($this->fl_raid_dates['single'][$attendee_id]['mdkp'][$mdkp_id]['first_date']) || $date < $this->fl_raid_dates['single'][$attendee_id]['mdkp'][$mdkp_id]['first_date']){
+$this->fl_raid_dates['single'][$attendee_id]['mdkp'][$mdkp_id]['first_date'] = $date;
+}
+if(!isset($this->fl_raid_dates['single'][$attendee_id]['mdkp'][$mdkp_id]['last_date']) || $date > $this->fl_raid_dates['single'][$attendee_id]['mdkp'][$mdkp_id]['last_date']){
+$this->fl_raid_dates['single'][$attendee_id]['mdkp'][$mdkp_id]['last_date'] = $date;
+}
+if(!isset($this->fl_raid_dates['multi'][$main_id]['mdkp'][$mdkp_id]['first_date']) || $date < $this->fl_raid_dates['multi'][$main_id]['mdkp'][$mdkp_id]['first_date']){
+$this->fl_raid_dates['multi'][$main_id]['mdkp'][$mdkp_id]['first_date'] = $date;
+}
+if(!isset($this->fl_raid_dates['multi'][$main_id]['mdkp'][$mdkp_id]['last_date']) || $date > $this->fl_raid_dates['multi'][$main_id]['mdkp'][$mdkp_id]['last_date']){
+$this->fl_raid_dates['multi'][$main_id]['mdkp'][$mdkp_id]['last_date'] = $date;
+}
+}
+}
+}
+}
+// cache results similar to original behavior
+$this->pdc->put('pdh_fl_raid_dates_single', isset($this->fl_raid_dates['single']) ? $this->fl_raid_dates['single'] : array());
+$this->pdc->put('pdh_fl_raid_dates_multi', isset($this->fl_raid_dates['multi']) ? $this->fl_raid_dates['multi'] : array());
+}
 
 		public function init_item_single(){
 			$this->blnItemsSingleLoaded = true;
@@ -418,3 +443,4 @@ if ( !class_exists( "pdh_r_member_dates" ) ) {
 		}
 	}//end class
 }//end if
+

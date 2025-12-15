@@ -51,7 +51,7 @@ if ( !class_exists( "cache_redis" ) ) {
 
 			$this->redis->setOption(\Redis::OPT_PREFIX, $strPrefix.':');
 		}
-
+		/* JCH - AI - 
 		public function put( $key, $data, $ttl, $global_prefix, $compress = false ) {
 			$key = $global_prefix.$key;
 
@@ -66,7 +66,56 @@ if ( !class_exists( "cache_redis" ) ) {
 			$retval = $this->redis->get($key);
 			return ($retval === false) ? null : @unserialize_noclasses($retval);
 		}
+		*/
+				public function put( $key, $data, $ttl, $global_prefix, $compress = false ) {
+					$key = $global_prefix.$key;
+					$serialized = serialize($data);
+					// Performance: Always compress objects >10KB, log compression ratio
+					if ($compress || strlen($serialized) > 10240) {
+						$gzipped = gzcompress($serialized, 6);
+						$data_to_store = 'GZIP:' . $gzipped;
+						// Log compression ratio for monitoring
+						if (function_exists('error_log')) {
+							$ratio = (strlen($gzipped) / strlen($serialized));
+							$savings = 100 - round($ratio * 100);
+							error_log("Redis cache: key=$key, original=".strlen($serialized).", compressed=".strlen($gzipped).", ratio=$ratio, savings=$savings%");
+						}
+						// If compression fails or is larger, fallback to original
+						if (strlen($gzipped) >= strlen($serialized)) {
+							$data_to_store = $serialized;
+						}
+					} else {
+						$data_to_store = $serialized;
+					}
+					// Store in Redis
+					try {
+						return $this->redis->setex($key, $ttl, $data_to_store);
+					} catch (Exception $e) {
+						error_log('Redis cache set error: ' . $e->getMessage());
+						return false;
+					}
+				}
 
+                public function get( $key, $global_prefix, $uncompress = false ) {
+                    $key = $global_prefix.$key;
+    
+                    try {
+                        $retval = $this->redis->get($key);
+                        if ($retval === false) return null;
+        
+                        if (strpos($retval, 'GZIP:') === 0) {
+                            $retval = gzuncompress(substr($retval, 5));
+                            if ($retval === false) {
+                                error_log('Redis decompression failed for key: ' . $key);
+                                return null;
+                            }
+                        }
+                        return unserialize_noclasses($retval);
+                    } catch (Exception $e) {
+                        error_log('Redis cache get error: ' . $e->getMessage());
+                        return null;
+                    }
+		}
 		public function del( $key, $global_prefix ) {
 			$key = $global_prefix.$key;
 			$this->redis->del($key);
@@ -74,7 +123,20 @@ if ( !class_exists( "cache_redis" ) ) {
 		}
 
 		public function get_cachesize($key, $global_prefix){
-			return 0;
+			$key = $global_prefix.$key;
+			$size = $this->redis->strlen($key);
+			return ($size !== false) ? $size : 0;
+			//return 0;
 		}
+
+		public function debug_dump_keys($pattern = '*') {
+		    try {
+		        return $this->redis->keys($pattern);
+		    } catch (Exception $e) {
+		        return ['Error: ' . $e->getMessage()];
+		    }
+		}
+
+
 	}//end class
 }//end if

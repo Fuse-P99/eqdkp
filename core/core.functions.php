@@ -610,18 +610,20 @@ function get_brightness($hex) {
 
 // "Extend" recursively array $a with array $b values (no deletion in $a, just added and updated values)
 function array_extend($a, $b){
-	foreach($b as $k=>$v){
-		if(is_array($v)){
-			if(!isset($a[$k])){
-				$a[$k] = $v;
-			}else{
-				$a[$k] = array_extend($a[$k], $v);
-			}
-		}else{
-			$a[$k] = $v;
-		}
-	}
-	return $a;
+	   // Performance: Use references to avoid unnecessary array copies
+	   foreach($b as $k=>&$v){
+		   if(is_array($v)){
+			   if(!isset($a[$k])){
+				   $a[$k] = &$v;
+			   }else{
+				   $a[$k] = array_extend($a[$k], $v);
+			   }
+		   }else{
+			   $a[$k] = $v;
+		   }
+	   }
+	   unset($v); // break reference
+	   return $a;
 }
 
 function search_in_array($child, $haystack, $strict=false, $key='') {

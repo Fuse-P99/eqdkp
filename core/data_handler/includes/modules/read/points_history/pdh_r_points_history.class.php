@@ -268,6 +268,7 @@ if ( !class_exists( "pdh_r_points_history" ) ) {
 				while($row = $objQuery->fetchAssoc()){
 					$arrEvents['items'][] = $row['item_id'];
 				}
+				unset($row);
 			}
 			//raids
 			$objQuery = $this->db->prepare("SELECT raid_id FROM __raids WHERE raid_date >= ? AND raid_date <= ?")->execute($from, $to);
@@ -275,6 +276,7 @@ if ( !class_exists( "pdh_r_points_history" ) ) {
 				while($row = $objQuery->fetchAssoc()){
 					$arrEvents['raids'][] = $row['raid_id'];
 				}
+				unset($row);
 			}
 
 			//adjustments
@@ -283,9 +285,14 @@ if ( !class_exists( "pdh_r_points_history" ) ) {
 				while($row = $objQuery->fetchAssoc()){
 					$arrEvents['adjustments'][] = $row['adjustment_id'];
 				}
+				unset($row);
 			}
 
 			$this->arrLocalMappingCache[$strCacheKey] = $arrEvents;
+			// Trigger GC if this mapping set is very large
+			if((count($arrEvents['items']) + count($arrEvents['raids']) + count($arrEvents['adjustments'])) > 20000){
+				gc_collect_cycles();
+			}
 
 			return $arrEvents;
 		}

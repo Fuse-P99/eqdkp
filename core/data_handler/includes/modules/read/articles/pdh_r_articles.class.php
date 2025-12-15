@@ -134,12 +134,19 @@ if ( !class_exists( "pdh_r_articles" ) ) {
 						}
 					}
 				}
+				// Free loop variable to reduce retained memory in long-lived handler
+				unset($drow);
 
 				$this->pdc->put('pdh_articles_table', $this->articles, null);
 				$this->pdc->put('pdh_articles_categories', $this->categories, null);
 				$this->pdc->put('pdh_articles_alias', $this->alias, null);
 				$this->pdc->put('pdh_articles_pageobjects', $this->pageobjects, null);
 				$this->pdc->put('pdh_articles_tags', $this->tags, null);
+
+				// If a very large number of articles is loaded, proactively collect cycles
+				if(is_array($this->articles) && count($this->articles) > 5000){
+					gc_collect_cycles();
+				}
 			}
 
 

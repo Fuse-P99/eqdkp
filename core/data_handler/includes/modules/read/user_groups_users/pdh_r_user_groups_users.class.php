@@ -49,6 +49,7 @@ if ( !class_exists( "pdh_r_user_groups_users" ) ){
 					//0 = regular member, 1 = group leader
 					$this->user_memberships[$row['user_id']][$row['group_id']] = (intval($row['grpleader'])) ? 1 : 0;
 				}
+				unset($row);
 			}
 		}
 

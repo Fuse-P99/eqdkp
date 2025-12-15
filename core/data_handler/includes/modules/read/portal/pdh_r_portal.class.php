@@ -55,8 +55,12 @@ if ( !class_exists( "pdh_r_portal" ) ) {
 						'child'			=> $drow['child'],
 					);
 				}
+				unset($drow);
 
 				$this->pdc->put('pdh_portal_table', $this->portal, null);
+				if(is_array($this->portal) && count($this->portal) > 5000){
+					gc_collect_cycles();
+				}
 			}
 		}
 

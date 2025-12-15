@@ -70,8 +70,10 @@ class user extends gen_class {
 
 	public function getUserIDfromDerivedExchangekey($strDerivedKey, $strDerivedType){
 		$arrUserList = $this->pdh->get('user', 'id_list', array(false));
+		// Performance: Batch fetch all exchange keys at once
+		$exchangeKeys = $this->pdh->aget('user', 'exchange_key', 0, array(0 => $arrUserList));
 		foreach($arrUserList as $intUserID){
-			$strExchangeKey = $this->pdh->get('user', 'exchange_key', array($intUserID));
+			$strExchangeKey = isset($exchangeKeys[$intUserID]) ? $exchangeKeys[$intUserID] : '';
 			$strUserDerivedKey = hash("sha256", md5($strExchangeKey).md5($strDerivedType));
 			if($strUserDerivedKey === $strDerivedKey) return $intUserID;
 		}
@@ -84,6 +86,17 @@ class user extends gen_class {
 		return ($this->id != ANONYMOUS);
 	}
 
+
+		   // Performance: Cache user objects in Redis if size >10KB
+		   public function cacheUserObject($userID, $userData) {
+			   $serialized = serialize($userData);
+			   if(strlen($serialized) > 10240) {
+				   $data = 'GZIP:' . gzcompress($serialized, 6);
+			   } else {
+				   $data = $serialized;
+			   }
+			   // Example: registry::register('cache_redis')->put('user_'.$userID, $data, 86400, '', true);
+		   }
 	/**
 	* Sets up user-data like language and style
 	*

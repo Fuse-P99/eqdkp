@@ -73,9 +73,13 @@ if ( !class_exists( "pdh_r_portal_layouts" ) ) {
 						}
 					}
 				}
+				unset($drow);
 
 				$this->pdc->put('pdh_portal_layouts_table', $this->layouts, null);
 				$this->pdc->put('pdh_portal_layouts_routes_table', $this->routes, null);
+				if(is_array($this->layouts) && count($this->layouts) > 2000){
+					gc_collect_cycles();
+				}
 			}
 		}
 

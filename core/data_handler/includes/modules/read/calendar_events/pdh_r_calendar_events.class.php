@@ -119,6 +119,8 @@ if ( !class_exists( "pdh_r_calendar_events" ) ) {
 						$this->repeatable_events[$parentid][] = (int)$row['id'];
 					}
 				}
+				// Free loop variable to reduce retained memory in long-lived handlers
+				unset($row);
 
 				// sort the timestamps
 				if(is_array($this->event_timestamps)) asort($this->event_timestamps);
@@ -128,6 +130,11 @@ if ( !class_exists( "pdh_r_calendar_events" ) ) {
 				$this->pdc->put('pdh_calendar_events_table.events_unique', $this->events_unique, null);
 				$this->pdc->put('pdh_calendar_events_table.repeatable', $this->repeatable_events, null);
 				$this->pdc->put('pdh_calendar_events_table.timestamps', $this->event_timestamps, null);
+
+				// For very large event tables, proactively ask PHP to collect cycles
+				if(is_array($this->events) && count($this->events) > 5000){
+					gc_collect_cycles();
+				}
 			}
 
 		}

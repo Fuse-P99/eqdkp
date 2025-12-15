@@ -81,7 +81,7 @@ if ( !class_exists( "pdh_w_member" ) ) {
 
 				if($changes == false && json_encode($old['profiledata']) == $data['profiledata']) {
 					return $member_id;
-				}
+				}else{ $data['lastupdate'] = time(); } // JCH - https://github.com/EQdkpPlus/core/pull/20/files
 			//add new member
 			} else {
 				$data['mainid'] = ($takechar) ? $this->pdh->get('member','mainchar',array($this->user->data['user_id'])) : $data['mainid'];

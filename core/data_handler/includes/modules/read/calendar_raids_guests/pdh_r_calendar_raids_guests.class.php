@@ -100,10 +100,14 @@ if (!class_exists('pdh_r_calendar_raids_guests')){
 					$this->guestsStatus[$row['calendar_events_id']][$row['status']][$row['class']][$row['id']] = $this->guests[$row['id']];
 					$this->guestsStatus2[$row['calendar_events_id']][$row['status']][$role][$row['id']] = $this->guests[$row['id']];
 				}
+				unset($row);
 				$this->pdc->put('pdh_calendar_raids_table.guests', $this->guests, NULL);
 				$this->pdc->put('pdh_calendar_raids_table.guestsEvents', $this->guestsEvent, NULL);
 				$this->pdc->put('pdh_calendar_raids_table.guestsStatus', $this->guestsStatus, NULL);
 				$this->pdc->put('pdh_calendar_raids_table.guestsStatus2', $this->guestsStatus2, NULL);
+				if(is_array($this->guests) && count($this->guests) > 5000){
+					gc_collect_cycles();
+				}
 			}
 
 			return true;

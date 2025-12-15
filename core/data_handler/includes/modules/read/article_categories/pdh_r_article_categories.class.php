@@ -90,12 +90,16 @@ if ( !class_exists( "pdh_r_article_categories" ) ) {
 					);
 					$this->alias[utf8_strtolower($drow['alias'])] = intval($drow['id']);
 				}
+				unset($drow);
 
 				$this->sortation = $this->get_sortation();
 
 				$this->pdc->put('pdh_article_categories_table', $this->categories, null);
 				$this->pdc->put('pdh_article_categories_sortation', $this->sortation, null);
 				$this->pdc->put('pdh_article_categories_alias', $this->alias, null);
+				if(is_array($this->categories) && count($this->categories) > 5000){
+					gc_collect_cycles();
+				}
 			}
 
 		}
