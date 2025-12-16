@@ -3,6 +3,7 @@
 <!-- ELSE --><!DOCTYPE html>
 <html lang="{L_XML_LANG}">
 	<head>
+		<script src="https://js.sentry-cdn.com/efabf552e856cf0902a361f1fa245cde.min.js" crossorigin="anonymous"></script>
 		<!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=9" /><![endif]-->
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 		<meta name="keywords" content="{META_KEYWORDS}" />

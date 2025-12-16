@@ -27,6 +27,15 @@ include_once($eqdkp_root_path . 'common.php');
 @set_time_limit(0);
 @ignore_user_abort(true);
 //single task
+
+// Toggle this to enable or disable cron execution
+$disable_cron = false; // Set to true to stop execution
+
+if ($disable_cron) {
+//    echo "Cronjob execution is disabled.";
+    return; // Exit the script early
+}
+
 if(registry::register('input')->get('task') != ""){
 	$force_run = (registry::register('input')->get('force') == 'true' && register('user')->check_auth('a_config_man', false)) ? true : false;
 	registry::register('cronjobs')->execute_cron(registry::register('input')->get('task'), $force_run);

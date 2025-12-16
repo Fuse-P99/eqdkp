@@ -17,12 +17,27 @@
  *
  *	You should have received a copy of the GNU Affero General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+ *
+*/
+
+
+// 1) Load Composer’s autoloader (so \Sentry classes exist)
+require __DIR__ . '/vendor/autoload.php';
+
+// 2) Initialize Sentry
+\Sentry\init([
+    // replace with your real DSN
+    'dsn'               => 'https://efabf552e856cf0902a361f1fa245cde@o4504660778156032.ingest.us.sentry.io/4507052310593536',
+    'environment'       => 'production',
+    'send_default_pii'  => true,
+    'traces_sample_rate' => 1.0, // enable if you want performance tracing
+    'profiles_sample_rate' => 1.0,
+]);
 
 define('EQDKP_INC', true);
 $eqdkp_root_path = './';
+//include_once($eqdkp_root_path . 'geo-block.php');
 include_once($eqdkp_root_path . 'common.php');
-
 class controller extends gen_class {
 	public static $shortcuts = array('social' => 'socialplugins');
 

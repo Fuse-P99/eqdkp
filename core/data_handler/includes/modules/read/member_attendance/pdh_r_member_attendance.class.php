@@ -92,12 +92,32 @@ if ( !class_exists( "pdh_r_member_attendance" ) ) {
 			$this->twink2main = $this->pdh->aget('member', 'mainid', 0, array($this->pdh->get('member', 'id_list')));
 			//initialise the basic array
 			$this->member_attendance[$time_period] = array();
+			/* JCH - AI didn't like this
 			foreach($this->pdh->get('member', 'id_list') as $member_id){
 				$this->member_attendance[$time_period][$mdkp_id]['members'][$member_id]['count'] = 0;
 				$this->member_attendance[$time_period][$mdkp_id]['members'][$member_id]['attended'] = 0;
 				$this->member_attendance[$time_period][$mdkp_id]['mains'][$this->twink2main[$member_id]]['attended'] = 0;
 				$this->member_attendance[$time_period][$mdkp_id]['mains'][$this->twink2main[$member_id]]['count'] = 0;
+			}*/
+			// Cache member ID list
+			$member_ids = $this->pdh->get('member', 'id_list');
+
+			// Pre-allocate efficiently
+			$initial_data = array(
+				'members' => array_fill_keys($member_ids, array('count' => 0, 'attended' => 0)),
+				'mains' => array()
+			);
+
+			// Build mains array
+			foreach($member_ids as $member_id) {
+				$main_id = $this->twink2main[$member_id];
+				if (!isset($initial_data['mains'][$main_id])) {
+					$initial_data['mains'][$main_id] = array('count' => 0, 'attended' => 0);
+				}
 			}
+
+			$this->member_attendance[$time_period][$mdkp_id] = $initial_data;			
+			/*End AI Fix*/
 
 			$first_date = 0;
 			if($time_period != 'LT') {
@@ -137,14 +157,32 @@ if ( !class_exists( "pdh_r_member_attendance" ) ) {
 				$first_raids[$first_date] = array($mdkp_id => 0);
 			}
 
-			unset($temp);
+			unset($temp); // Free memory
 
 			//get Raids
 			$arrDoneRaids = array();
-			$objQuery = $this->db->prepare("SELECT raid_id, event_id, raid_date, raid_connected_attendance FROM __raids WHERE raid_date > ?")->execute($first_date);
+			$objQuery = $this->db->prepare("
+							SELECT 
+								r.raid_id, 
+								r.event_id, 
+								r.raid_date, 
+								r.raid_connected_attendance,
+								GROUP_CONCAT(ra.member_id) as attendee_list
+							FROM __raids r
+							LEFT JOIN __raid_attendees ra ON r.raid_id = ra.raid_id
+							WHERE r.raid_date > ?
+							GROUP BY r.raid_id
+						")->execute($first_date);
+
+			$raid_attendees_map = array();
+
 			if($objQuery){
 				while($row = $objQuery->fetchAssoc()){
 					$raid_id = intval($row['raid_id']);
+				        $attendees = !empty($row['attendee_list'])
+				            ? array_map('intval', explode(',', $row['attendee_list']))
+				            : array();
+				        $raid_attendees_map[$raid_id] = $attendees;
 					$eventid = intval($row['event_id']);
 					$date = intval($row['raid_date']);
 					$arrConnected = json_decode($row['raid_connected_attendance']);
@@ -152,7 +190,7 @@ if ( !class_exists( "pdh_r_member_attendance" ) ) {
 					$mdkpids = $this->pdh->get('multidkp', 'mdkpids4eventid', array($eventid, false));
 					if(!in_array($mdkp_id, $mdkpids)) continue;
 
-					$attendees = $this->pdh->get('raid', 'raid_attendees', array($raid_id));
+					//$attendees = $this->pdh->get('raid', 'raid_attendees', array($raid_id));
 					$mains = array();
 					//increment attendence counter
 					if(is_array($attendees)) {
@@ -180,9 +218,14 @@ if ( !class_exists( "pdh_r_member_attendance" ) ) {
 					
 					if(!isset($arrDoneRaids[$raid_id])){
 						foreach($first_raids as $first_raid => $num){
-							if($date >= $first_raid) {
-								$first_raids[$first_raid][$mdkp_id] += $value;
-							}
+							// JCH - Before (unsafe - creates undefined keys) https://github.com/EQdkpPlus/core/pull/124
+                                                        //if($date >= $first_raid) {
+							//	$first_raids[$first_raid][$mdkp_id] += $value;
+							//}
+                                                        // After (safe - checks existence first)  
+                                                        if($date >= $first_raid && isset($first_raids[$first_raid][$mdkp_id])) {
+                                                            $first_raids[$first_raid][$mdkp_id] += $value;
+                                                        }
 						}
 						
 						$arrDoneRaids[$raid_id] = 1;
@@ -206,6 +249,9 @@ if ( !class_exists( "pdh_r_member_attendance" ) ) {
 					}
 				}
 			}
+			unset($twink_first_dates); // Free memory
+			unset($raid_attendees_map); // Free memory
+			unset($arrDoneRaids); // Free memory
 			//cache it and let it expire at midnight
 			$stm = 86400-($this->time->time)%86400;
 

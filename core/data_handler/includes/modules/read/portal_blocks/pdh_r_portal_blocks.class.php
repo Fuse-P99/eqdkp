@@ -61,8 +61,12 @@ if ( !class_exists( "pdh_r_portal_blocks" ) ) {
 						'wide_content'		=> intval($drow['wide_content']),
 					);
 				}
+				unset($drow);
 
 				$this->pdc->put('pdh_portal_blocks_table', $this->blocks, null);
+				if(is_array($this->blocks) && count($this->blocks) > 5000){
+					gc_collect_cycles();
+				}
 			}
 		}
 

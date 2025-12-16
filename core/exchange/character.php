@@ -166,3 +166,5 @@ if (!class_exists('exchange_character')){
 		}
 	}
 }
+
+$categorynames = []; // or some array of categories

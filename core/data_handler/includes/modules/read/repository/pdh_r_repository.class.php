@@ -78,9 +78,15 @@ if ( !class_exists( "pdh_r_repository" ) ) {
 					}
 					$this->repository[(int)$row['category']][$row['id']]['tags'] = unserialize_noclasses($row['tags']);
 				}
+				unset($row);
 
 				$this->pdc->put('pdh_repository_table', $this->repository, null);
 				$this->pdc->put('pdh_repository_table.tags', $this->tags, null);
+				if(is_array($this->repository)){
+					$cnt = 0;
+					foreach($this->repository as $cat){ if(is_array($cat)) $cnt += count($cat); }
+					if($cnt > 5000){ gc_collect_cycles(); }
+				}
 			}
 		}
 

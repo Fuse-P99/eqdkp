@@ -54,6 +54,8 @@ if(!class_exists('pdh_r_itempool')){
 					$this->itempools[$row['itempool_id']]['desc'] = $row['itempool_desc'];
 				}
 				$this->pdc->put('pdh_itempools_table', $this->itempools, null);
+				// Free memory after caching
+				unset($row);
 			}
 		}
 

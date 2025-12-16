@@ -84,9 +84,14 @@ if (!class_exists('pdh_r_roles')){
 					$this->roles[$row['role_id']]['classes_r']	= $row['role_classes'];
 					$this->roles_id[$row['role_id']]			= $row['role_name'];
 				}
+				// Free loop variable to reduce retained memory
+				unset($row);
 
 				$this->pdc->put('pdh_roles_table.roles', $this->roles, NULL);
 				$this->pdc->put('pdh_roles_table.roles_id', $this->roles_id, NULL);
+				if(is_array($this->roles) && count($this->roles) > 5000){
+					gc_collect_cycles();
+				}
 			}
 
 			return true;

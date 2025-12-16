@@ -83,6 +83,7 @@ if ( !class_exists( "pdh_r_profile_fields" ) ) {
 						$this->profile_fields[intval($drow['id'])][$key] = $dat;
 					}
 				}
+				unset($drow);
 
 				// check if the character tab is in the categories list, if not add it
 				if (!is_array($this->profile_categories)) $this->profile_categories = array();
@@ -95,6 +96,10 @@ if ( !class_exists( "pdh_r_profile_fields" ) ) {
 				$this->pdc->put('pdh_profile_fields_table', $this->profile_fields, null);
 				$this->pdc->put('pdh_profile_categories_table', $this->profile_categories, null);
 				$this->pdc->put('pdh_profile_field_mapping', $this->profile_field_mapping, null);
+
+				if(is_array($this->profile_fields) && count($this->profile_fields) > 5000){
+					gc_collect_cycles();
+				}
 			}
 		}
 

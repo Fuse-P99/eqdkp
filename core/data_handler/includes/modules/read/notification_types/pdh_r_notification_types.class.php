@@ -79,8 +79,13 @@ if ( !class_exists( "pdh_r_notification_types" ) ) {
 						'icon'				=> $drow['icon'],
 					);
 				}
+				// Free loop variable to reduce retained memory
+				unset($drow);
 
 				$this->pdc->put('pdh_notification_types_table', $this->notification_types, null);
+				if(is_array($this->notification_types) && count($this->notification_types) > 5000){
+					gc_collect_cycles();
+				}
 			}
 
 		}	//end init function

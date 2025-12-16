@@ -52,6 +52,8 @@ if ( !class_exists( "pdh_r_multidkp" ) ) {
 
 			//fetch multidkp2event data
 			$me_data = array();
+			$noatt_data = array();
+			$ip_data = array();
 
 			$objQuery = $this->db->query("SELECT * FROM __multidkp2event;");
 			if($objQuery){
@@ -83,6 +85,11 @@ if ( !class_exists( "pdh_r_multidkp" ) ) {
 				}
 
 				$this->pdc->put('pdh_multidkp_table', $this->multidkp, null);
+				// Free memory after caching
+				unset($me_data);
+				unset($noatt_data);
+				unset($ip_data);
+				unset($row);
 			}
 		}
 

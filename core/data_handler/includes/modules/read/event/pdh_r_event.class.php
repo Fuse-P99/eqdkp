@@ -53,6 +53,17 @@ if(!class_exists('pdh_r_event')){
 		}
 
 		public function init(){
+			// Lightweight profiling for event init
+			if (!isset($this->__prof_event)) {
+				$profTools = dirname(__DIR__, 6) . DIRECTORY_SEPARATOR . 'CoPilot' . DIRECTORY_SEPARATOR . 'PROFILING_TOOLS.php';
+				if (file_exists($profTools)) {
+					include_once $profTools;
+				}
+				if (class_exists('PerformanceProfiler')) {
+					$this->__prof_event = new PerformanceProfiler();
+					$this->__prof_event->start();
+				}
+			}
 			//cached data not outdated?
 			$this->events = $this->pdc->get('pdh_events_table');
 			if($this->events !== NULL){
@@ -71,6 +82,17 @@ if(!class_exists('pdh_r_event')){
 					$this->events[$row['event_id']]['show_profile'] = (int)$row['event_show_profile'];
 				}
 				$this->pdc->put('pdh_events_table', $this->events, null);
+				// Free memory after caching
+				unset($row);
+
+				// End profiling and log
+				if (isset($this->__prof_event) && method_exists($this->__prof_event, 'end')) {
+					$metrics = $this->__prof_event->end();
+					if (function_exists('error_log')) {
+						error_log('Profiler pdh_r_event:init time=' . $metrics['time'] . ' memory=' . $metrics['memory']);
+					}
+					unset($this->__prof_event);
+				}
 			}
 		}
 
@@ -160,15 +182,6 @@ if(!class_exists('pdh_r_event')){
 		public function comp_eventlink($params1, $params2){
 			return ($this->get_name($params1[0]) < $this->get_name($params2[0])) ? -1  : 1 ;
 		}
-		
-		public function comp_multidkppools($params1, $params2){
-		    return ($this->get_html_multidkppools($params1[0]) < $this->get_html_multidkppools($params2[0])) ? -1  : 1 ;
-		}
-		
-		public function comp_itempools($params1, $params2){
-		    return ($this->get_html_itempools($params1[0]) < $this->get_html_itempools($params2[0])) ? -1  : 1 ;
-		}
-		
 
 		public function get_editicon($event_id, $baseurl, $url_suffix=''){
 			return "<a href='".$this->get_eventlink($event_id, $baseurl, $url_suffix)."'><i class='fa fa-pencil fa-lg' title='".$this->user->lang('edit')."'></i></a>";

@@ -61,7 +61,13 @@ if ( !class_exists( "pdh_r_calendars" ) ) {
 						'permissions'		=> $row['permissions'],
 					);
 				}
+				// Free loop variable to reduce retained memory in long-lived handlers
+				unset($row);
 				$this->pdc->put('pdh_calendars_table', $this->calendars, null);
+				// Trigger GC for very large calendar sets
+				if(is_array($this->calendars) && count($this->calendars) > 5000){
+					gc_collect_cycles();
+				}
 			}
 		}
 

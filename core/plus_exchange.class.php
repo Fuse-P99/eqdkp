@@ -27,7 +27,6 @@ if( !class_exists( "plus_exchange" ) ) {
 	class plus_exchange extends gen_class {
 
 		//module lists
-		private $initialized_modules	= array();
 		public $modules					= array();
 		public $feeds					= array();
 		private $modulepath				= 'core/exchange/';
@@ -61,96 +60,75 @@ if( !class_exists( "plus_exchange" ) ) {
 			$m_path = $this->root_path.$this->modulepath;
 
 			//Scan "local" modules
-			$dh = opendir( $m_path );
-			if ($dh){
-				while( false !== ( $file = readdir( $dh ) ) ) {
-					if( $file != '.' && $file != '..' && $file != '.svn' && !is_dir($file)) {
-						$path_parts = pathinfo($file);
-						$this->register_module( $path_parts['filename'], $this->modulepath.$path_parts['filename'] );
+			if($dh = opendir($m_path)){
+				while(false !== ($file = readdir($dh))){
+					if($file[0] !== '.' && !is_dir($m_path.$file)){
+						$filename = pathinfo($file, PATHINFO_FILENAME);
+						$this->register_module($filename, $this->modulepath.$filename);
 					}
 				}
+				closedir($dh);
 			}
 
 			//Plugins
 			$plugs = $this->pm->get_plugins(PLUGIN_INSTALLED);
-			if (is_array($plugs)){
-				foreach($plugs as $plugin_code) {
-					$ems = $this->pm->get_plugin($plugin_code)->get_exchange_modules();
-					foreach($ems as $module_name) {
-						$module_dir = 'plugins/'.$plugin_code.'/exchange/'.$module_name;
-						$this->register_module($module_name, $module_dir);
+			if(is_array($plugs)){
+				foreach($plugs as $plugin_code){
+					$plugin = $this->pm->get_plugin($plugin_code);
+					foreach($plugin->get_exchange_modules() as $module_name){
+						$this->register_module($module_name, 'plugins/'.$plugin_code.'/exchange/'.$module_name);
 					}
-					$efs = $this->pm->get_plugin($plugin_code)->get_exchange_modules(true);
-					foreach($efs as $module) {
+					foreach($plugin->get_exchange_modules(true) as $module){
 						$this->register_feed($module['name'], $module['url'], $plugin_code);
 					}
 				}
 			}
+			
 			//Portal modules
 			$layouts = $this->pdh->get('portal_layouts', 'id_list');
 			$module_ids = array();
-			foreach($layouts as $layout_id) {
+			foreach($layouts as $layout_id){
 				$modules = $this->pdh->get('portal_layouts', 'modules', array($layout_id));
-				foreach($modules as $position => $module) {
-					foreach($module as $mod_id) {
-						$module_ids[$mod_id] = $mod_id;
-					}
+				foreach($modules as $position => $module){
+					$module_ids += array_flip(array_flip($module)); // Remove duplicates efficiently
 				}
 			}
 
-			if(is_array($module_ids)) {
-				foreach($module_ids as $module_id) {
-					$path = $this->pdh->get('portal', 'path', array($module_id));
-					$obj = $path.'_portal';
-					if (class_exists($obj) && $this->portal->check_visibility($module_id)){
-						$arrExchangeModules = $obj::get_data('exchangeMod');
-						$plugin = $this->pdh->get('portal', 'plugin', array($module_id));
-						foreach ($arrExchangeModules as $module_name){
-							if ($plugin != ''){
-								$module_dir = 'plugins/'.$plugin.'/portal/exchange/'.$module_name;
-							} else {
-								$module_dir = 'portal/'.$path.'/exchange/'.$module_name;
-							}
-							$this->register_module($module_name, $module_dir, array($module_id));
-						}
+			foreach($module_ids as $module_id){
+				$path = $this->pdh->get('portal', 'path', array($module_id));
+				$obj = $path.'_portal';
+				if(class_exists($obj) && $this->portal->check_visibility($module_id)){
+					$arrExchangeModules = $obj::get_data('exchangeMod');
+					$plugin = $this->pdh->get('portal', 'plugin', array($module_id));
+					$base_path = ($plugin != '') ? 'plugins/'.$plugin : 'portal/'.$path;
+					foreach($arrExchangeModules as $module_name){
+						$this->register_module($module_name, $base_path.'/exchange/'.$module_name, array($module_id));
 					}
 				}
 			}
-
 		}
 
 		public function execute(){
 			//Get all Arguments
-			$request_url = $this->env->request;
 			$request_method = $_SERVER['REQUEST_METHOD'];
+			$request_body = file_get_contents("php://input");
 
 			$request_args['get'] = $_GET;
 			$request_args['post'] = $_POST;
-			$request_body = file_get_contents("php://input");
-			parse_str($request_body, $request_args['put']);
-			parse_str($request_body, $request_args['delete']);
-			$arrBody = array();
+			$arrBody = $this->parseRequestBody($request_body);
 
-			if(strlen($request_body)){
-				$xml = simplexml_load_string($request_body, "SimpleXMLElement", LIBXML_NOCDATA);
-				if($xml){
-					$json = json_encode($xml);
-					$arrBody = json_decode($json,TRUE);
-				} else {
-					$json = json_decode($request_body, true);
-					if($json){
-						$arrBody = $json;
-					}
-				}
-
+			// Parse body-based arguments once
+			if($request_body){
+				parse_str($request_body, $request_args['put']);
+				parse_str($request_body, $request_args['delete']);
 			}
 
 			$this->authenticateUser();
 
 			$function = $request_args['get']['function'];
+			$out = $this->error('function not found');
 
 			if(isset($this->modules[$function])){
-
 				include ($this->root_path.$this->modules[$function]['path'].'.php');
 				$module = 'exchange_'.$function;
 				$class = register($module, $this->modules[$function]['class_params']);
@@ -158,21 +136,11 @@ if( !class_exists( "plus_exchange" ) ) {
 
 				if (method_exists($class, $method)){
 					$out = $class->$method($request_args, $arrBody);
-				} else {
-					$out = $this->error('function not found');
 				}
-			} else {
-				$out = $this->error('function not found');
 			}
 
-			if ($request_args['get']['format'] == 'json'){
-				return $this->returnJSON($out);
-			} elseif ($request_args['get']['format'] == 'lua'){
-				return $this->returnLua($out, $request_args);
-			} else {
-				return $this->returnXML($out);
-			}
-
+			$format = $request_args['get']['format'] ?? 'xml';
+			return $this->formatResponse($out, $format, $request_args);
 		}
 
 		public function error($strErrorMessage, $arrInfo=array()){
@@ -187,11 +155,45 @@ if( !class_exists( "plus_exchange" ) ) {
 			return $out;
 		}
 
-		private function returnJSON($arrData){
-			if (!isset($arrData['status']) || $arrData['status'] != 0){
-					$arrData['status'] = 1;
+		private function parseRequestBody($request_body){
+			$arrBody = array();
+
+			if(!$request_body){
+				return $arrBody;
 			}
-			return json_encode($arrData);
+
+			// Try JSON first (faster, no double conversion)
+			$arrBody = json_decode($request_body, true);
+			if($arrBody !== null){
+				return $arrBody;
+			}
+
+			// Fall back to XML
+			$xml = simplexml_load_string($request_body, "SimpleXMLElement", LIBXML_NOCDATA);
+			if($xml){
+				$arrBody = json_decode(json_encode($xml), TRUE);
+			}
+
+			return $arrBody;
+		}
+
+		private function setResponseStatus(&$arrData){
+			if (!isset($arrData['status']) || $arrData['status'] != 0){
+				$arrData['status'] = 1;
+			}
+		}
+
+		private function formatResponse($arrData, $format, $arrRequestArgs){
+			$this->setResponseStatus($arrData);
+
+			switch($format){
+				case 'json':
+					return json_encode($arrData);
+				case 'lua':
+					return $this->returnLua($arrData, $arrRequestArgs);
+				default:
+					return $this->returnXML($arrData);
+			}
 		}
 
 		private function returnXML($arrData){
@@ -199,103 +201,82 @@ if( !class_exists( "plus_exchange" ) ) {
 				$arrData = $this->error('unknown error');
 			}
 
-			if (!isset($arrData['status']) || $arrData['status'] != 0){
-					$arrData['status'] = 1;
-			}
-
 			$xml_array = $this->xmltools->array2simplexml($arrData, 'response');
-
 			$dom = dom_import_simplexml($xml_array)->ownerDocument;
 			$dom->encoding='utf-8';
 			$dom->formatOutput = true;
-			$string = $dom->saveXML();
-			return trim($string);
+			return trim($dom->saveXML());
 		}
 
 		private function returnLua($arrData, $arrRequestArgs){
-			if (!isset($arrData['status']) || $arrData['status'] != 0){
-				$arrData['status'] = 1;
+			static $luaParser = null;
+			
+			if($luaParser === null){
+				include_once($this->root_path."libraries/lua/parser.php");
+				$one_table = !(isset($arrRequestArgs['get']['one_table']) && $arrRequestArgs['get']['one_table'] == "false");
+				$luaParser = new LuaParser($one_table);
 			}
-			include_once($this->root_path."libraries/lua/parser.php");
-			$luaParser = new LuaParser((isset($arrRequestArgs['get']['one_table']) && $arrRequestArgs['get']['one_table'] == "false") ? false : true);
 			return $luaParser->array2lua($arrData);
 		}
 
 		private function authenticateUser(){
-			if($this->in->exists('atoken') && strlen($this->in->get('atoken'))){
-				$strToken = $this->in->get('atoken');
+			$strToken = $this->getTokenFromRequest();
 
-				//It's the Admin API Token
+			if($strToken){
+				// Check admin tokens
 				if($strToken === $this->config->get('api_key')){
 					$this->isCoreAPIToken = true;
-					//Try to get the first superadmin
-					$arrSuperAdmins = $this->pdh->get('user_groups_users', 'user_list', array(2));
-					reset($arrSuperAdmins);
-					$intKey = key($arrSuperAdmins);
-					$intSuperadminID = $arrSuperAdmins[$intKey];
-					if($intSuperadminID) {
-						$this->user->changeSessionUser($intSuperadminID);
-						return $intSuperadminID;
-					}
+					return $this->setSuperadminSession();
 				} elseif($strToken === $this->config->get('api_key_ro')){
 					$this->isCoreAPIToken = true;
 					$this->isReadOnlyToken = true;
-					//Try to get the first superadmin
-					$arrSuperAdmins = $this->pdh->get('user_groups_users', 'user_list', array(2));
-					reset($arrSuperAdmins);
-					$intKey = key($arrSuperAdmins);
-					$intSuperadminID = $arrSuperAdmins[$intKey];
-					if($intSuperadminID) {
-						$this->user->changeSessionUser($intSuperadminID);
-						return $intSuperadminID;
-					}
+					return $this->setSuperadminSession();
 				}
 
-				//It's an user token
+				// It's a user token
 				$intUserID = $this->user->getUserIDfromDerivedExchangekey($strToken, 'pex_api');
 				$this->user->changeSessionUser($intUserID);
 				return $intUserID;
-
-			} else {
-				$headers = $this->getAuthorizationHeader();
-				if($headers){
-					$arrToken = array();
-					if(strpos($headers, 'token') !== false){
-						parse_str($headers, $arrToken);
-						$strToken = isset($arrToken['token']) ? $arrToken['token'] : "";
-					} else {
-						$strToken = trim($headers);
-					}
-
-					//It's the Admin API Token
-					if(strlen($strToken) && $strToken === $this->config->get('api_key')){
-						$this->isCoreAPIToken = true;
-						//Try to get the first superadmin
-						$arrSuperAdmins = $this->pdh->get('user_groups_users', 'user_list', array(2));
-						reset($arrSuperAdmins);
-						$intKey = key($arrSuperAdmins);
-						$intSuperadminID = $arrSuperAdmins[$intKey];
-						if($intSuperadminID) {
-							$this->user->changeSessionUser($intSuperadminID);
-							return $intSuperadminID;
-						}
-					}
-
-					//It's an user token
-					$intUserID = $this->user->getUserIDfromDerivedExchangekey($strToken, 'pex_api');
-					$this->user->changeSessionUser($intUserID);
-					return $intUserID;
-
-				}
 			}
 
-			//User not authenticated, we are still here
+			//User not authenticated, check hooks
 			if($this->hooks->isRegistered('pex_authenticate_user')){
-				$userID = $this->hooks->process('pex_authenticate_user', $this->user->id, true);
-				return $userID;
+				return $this->hooks->process('pex_authenticate_user', $this->user->id, true);
 			}
 
 			return $this->user->id;
+		}
+
+		private function getTokenFromRequest(){
+			if($this->in->exists('atoken') && strlen($this->in->get('atoken'))){
+				return $this->in->get('atoken');
+			}
+
+			$headers = $this->getAuthorizationHeader();
+			if(!$headers){
+				return '';
+			}
+
+			if(strpos($headers, 'token') !== false){
+				parse_str($headers, $arrToken);
+				return isset($arrToken['token']) ? $arrToken['token'] : "";
+			}
+
+			return trim($headers);
+		}
+
+		private function setSuperadminSession(){
+			$arrSuperAdmins = $this->pdh->get('user_groups_users', 'user_list', array(2));
+			if(empty($arrSuperAdmins)){
+				return null;
+			}
+
+			$intSuperadminID = reset($arrSuperAdmins);
+			if($intSuperadminID){
+				$this->user->changeSessionUser($intSuperadminID);
+				return $intSuperadminID;
+			}
+			return null;
 		}
 
 		private function getAuthorizationHeader(){

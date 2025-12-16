@@ -57,6 +57,8 @@ if ( !class_exists( "pdh_r_raid_groups" ) ){
 						$this->raid_standard_group = $row['groups_raid_id'];
 					}
 				}
+				// Free loop variable to reduce retained memory
+				unset($row);
 			}
 		}
 

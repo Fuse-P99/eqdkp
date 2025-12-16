@@ -73,9 +73,32 @@ if(!class_exists('pdh_r_item')){
 
 
 		public function init(){
+			// Lightweight profiling for item init
+			if (!isset($this->__prof_item)) {
+				$profTools = dirname(__DIR__, 6) . DIRECTORY_SEPARATOR . 'CoPilot' . DIRECTORY_SEPARATOR . 'PROFILING_TOOLS.php';
+				if (file_exists($profTools)) {
+					include_once $profTools;
+				}
+				if (class_exists('PerformanceProfiler')) {
+					$this->__prof_item = new PerformanceProfiler();
+					$this->__prof_item->start();
+				}
+			}
 			$this->objPagination = register("cachePagination", array("items", "item_id", "__items", array(), 250));
 			$this->objPagination->initIndex();
 			$this->index = $this->objPagination->getIndex();
+			// Free memory if index is large
+			if(is_array($this->index) && count($this->index) > 10000) {
+				gc_collect_cycles();
+			}
+			// End profiling and log
+			if (isset($this->__prof_item) && method_exists($this->__prof_item, 'end')) {
+				$metrics = $this->__prof_item->end();
+				if (function_exists('error_log')) {
+					error_log('Profiler pdh_r_item:init time=' . $metrics['time'] . ' memory=' . $metrics['memory']);
+				}
+				unset($this->__prof_item);
+			}
 		}
 
 

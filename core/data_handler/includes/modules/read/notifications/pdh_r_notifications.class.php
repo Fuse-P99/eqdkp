@@ -86,6 +86,7 @@ if ( !class_exists( "pdh_r_notifications" ) ) {
 				while ( $row = $objQuery->fetchAssoc() ) {
 					$arrOut[] = $row['id'];
 				}
+				unset($row);
 			}
 
 			return $arrOut;
@@ -99,6 +100,7 @@ if ( !class_exists( "pdh_r_notifications" ) ) {
 				while ( $row = $objQuery->fetchAssoc() ) {
 					$arrOut[] = $row['id'];
 				}
+				unset($row);
 			}
 
 			return $arrOut;

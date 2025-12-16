@@ -78,6 +78,8 @@ if (!class_exists("pdh_r_user")){
 					$this->users[$row['user_id']]						= $row;
 					$this->users[$row['user_id']]['username_clean']		= clean_username($row['username']);
 				}
+				// Free memory after batch loop
+				unset($row);
 			}
 
 		}

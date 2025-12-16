@@ -51,6 +51,7 @@ if ( !class_exists( "pdh_r_raid_groups_members" ) ){
 					//0 = regular member, 1 = group leader
 					$this->raid_memberships[$row['member_id']][$row['group_id']] = (intval($row['grpleader'])) ? 1 : 0;
 				}
+				unset($row);
 			}
 		}
 

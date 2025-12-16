@@ -353,6 +353,7 @@ if( !class_exists( "cachePagination" ) ) {
 					if (isset($this->data[$intChunkID][$intObjectID])) return true;
 				} else {
 					$this->data[$intChunkID] = $arrCacheData;
+					unset($arrCacheData); # JCH Mem
 					if (isset($this->data[$intChunkID][$intObjectID])) return true;
 				}
 			} else {

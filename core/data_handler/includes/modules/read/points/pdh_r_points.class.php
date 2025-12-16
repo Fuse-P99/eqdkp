@@ -82,6 +82,23 @@ if ( !class_exists( "pdh_r_points" ) ) {
 						$arrAffectedMembers = (isset($arrData['members']) && is_array($arrData['members'])) ? $arrData['members'] : $this->pdh->get('member', 'id_list');
 						$intAffectedTime = (isset($arrData['time'])) ? $arrData['time'] : 0;
 
+						// If members were not provided, attempt to derive them for raid updates from the affected raid ids
+						if((!isset($arrData['members']) || !is_array($arrData['members'])) && $strHook == 'raid_update'){
+							$raid_attendees = array();
+							if(is_array($affected_ids) && count($affected_ids)){
+								foreach($affected_ids as $raidid){
+									$att = $this->pdh->get('raid', 'raid_attendees', array($raidid));
+									if(is_array($att) && count($att)) $raid_attendees = array_merge($raid_attendees, $att);
+								}
+							}
+							if(count($raid_attendees)){
+								$arrAffectedMembers = $raid_attendees;
+							} else {
+								// fallback: all members
+								$arrAffectedMembers = $this->pdh->get('member', 'id_list');
+							}
+						}
+
 						$arrTotalAffected = array_merge($arrTotalAffected, $arrAffectedMembers);
 						$this->get_delete_from_snapshot($intAffectedTime, $arrAffectedMembers);
 
@@ -97,6 +114,13 @@ if ( !class_exists( "pdh_r_points" ) ) {
 					}
 
 				}
+			}
+			// Free memory if calculated arrays are large
+			if(is_array($this->arrCalculatedSingle) && count($this->arrCalculatedSingle) > 10000) {
+				gc_collect_cycles();
+			}
+			if(is_array($this->arrCalculatedMulti) && count($this->arrCalculatedMulti) > 10000) {
+				gc_collect_cycles();
 			}
 			if((isset($arrData['apa']) && $arrData['apa']) || ($strAction == 'add' && ($strHook == 'itempool_update' || $strHook == 'multidkp_update' || ($strHook == 'member_update'  && !is_array($affected_ids))))){
 				//Nothing to do with APA or member_cache
@@ -137,9 +161,28 @@ if ( !class_exists( "pdh_r_points" ) ) {
 		}
 
 		public function init() {
+			// Lightweight profiling for points snapshot init
+			if (!isset($this->__prof_points)) {
+				$profTools = dirname(__DIR__, 6) . DIRECTORY_SEPARATOR . 'CoPilot' . DIRECTORY_SEPARATOR . 'PROFILING_TOOLS.php';
+				if (file_exists($profTools)) {
+					include_once $profTools;
+				}
+				if (class_exists('PerformanceProfiler')) {
+					$this->__prof_points = new PerformanceProfiler();
+					$this->__prof_points->start();
+				}
+			}
 			$this->arrSnapshotTime = $this->pdc->get('pdh_points_snapshot_mapping');
 			if($this->arrSnapshotTime === NULL){
 				$this->snapshot_mapping();
+			}
+			// End profiling and log
+			if (isset($this->__prof_points) && method_exists($this->__prof_points, 'end')) {
+				$metrics = $this->__prof_points->end();
+				if (function_exists('error_log')) {
+					error_log('Profiler pdh_r_points:init time=' . $metrics['time'] . ' memory=' . $metrics['memory']);
+				}
+				unset($this->__prof_points);
 			}
 		}
 

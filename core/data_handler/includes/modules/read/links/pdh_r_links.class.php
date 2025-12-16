@@ -67,7 +67,11 @@ if ( !class_exists( "pdh_r_links" ) ){
 					$this->links[$row['link_id']]['visibility']	= xhtml_entity_decode($row['link_visibility']);
 					$this->links[$row['link_id']]['height']		= $row['link_height'];
 				}
+				unset($row);
 				$this->pdc->put('pdh_links_table', $this->links, NULL);
+				if(is_array($this->links) && count($this->links) > 5000){
+					gc_collect_cycles();
+				}
 			}
 			return true;
 		}

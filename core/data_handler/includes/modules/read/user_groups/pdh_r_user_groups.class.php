@@ -57,6 +57,8 @@ if ( !class_exists( "pdh_r_user_groups" ) ){
 						$this->user_standard_group = $row['groups_user_id'];
 					}
 				}
+				// Free loop variable to reduce retained memory
+				unset($row);
 			}
 		}
 
